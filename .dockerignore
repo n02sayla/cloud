@@ -1,0 +1,26 @@
+# Git
+.git
+.gitignore
+
+# Python 快取
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 虛擬環境
+venv/
+env/
+.venv/
+
+# 測試
+test/
+.pytest_cache/
+
+# 文件
+README.md
+
+# Docker 本身
+Dockerfile
+.dockerignore
