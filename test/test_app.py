@@ -47,3 +47,42 @@ def test_feature2_route(client):
     response = client.get('/feature2')
     assert response.status_code == 200
     assert "要找下午上班的公司" in response.data.decode('utf-8')
+
+def test_stress_api_flow(client):
+    """驗證壓力測試 API 的完整工作流程 (狀態查詢、啟動、停止)"""
+    # 1. 檢查初始狀態
+    response = client.get('/api/stress/status')
+    assert response.status_code == 200
+    json_data = response.get_json()
+    assert json_data["status"] == "success"
+    assert "stress_status" in json_data
+    assert json_data["stress_status"]["active"] is False
+
+    # 2. 啟動壓力測試 (啟動 1 核心，持續 10 秒)
+    response = client.post('/api/stress/start', json={"cores": 1, "duration": 10})
+    assert response.status_code == 200
+    json_data = response.get_json()
+    assert json_data["status"] == "success"
+    assert json_data["stress_status"]["active"] is True
+    assert json_data["stress_status"]["cores"] == 1
+    assert json_data["stress_status"]["duration"] == 10
+
+    # 3. 再一次檢查狀態，確保維持 active
+    response = client.get('/api/stress/status')
+    assert response.status_code == 200
+    json_data = response.get_json()
+    assert json_data["stress_status"]["active"] is True
+
+    # 4. 停止壓力測試
+    response = client.post('/api/stress/stop')
+    assert response.status_code == 200
+    json_data = response.get_json()
+    assert json_data["status"] == "success"
+    assert json_data["stress_status"]["active"] is False
+
+    # 5. 最後驗證狀態已重置為 inactive
+    response = client.get('/api/stress/status')
+    assert response.status_code == 200
+    json_data = response.get_json()
+    assert json_data["stress_status"]["active"] is False
+

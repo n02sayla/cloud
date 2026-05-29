@@ -1,0 +1,13 @@
+name: cloud-dashboard
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cloud-dashboard:latest
+    container_name: cloud-dashboard-app
+    ports:
+      - "19191:19191"
+    restart: always
+

@@ -439,6 +439,16 @@
             box-shadow: none;
         }
 
+        .btn-tab {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            box-shadow: none;
+        }
+        .btn-tab.active {
+            background: linear-gradient(135deg, var(--accent-purple) 0%, #6366f1 100%);
+            border-color: transparent;
+        }
+
         /* 頁尾 */
         footer {
             width: 100%;
@@ -573,6 +583,143 @@
                     <button class="btn btn-outline" onclick="clearTerminal()">清空終端機</button>
                 </div>
             </div>
+
+            <!-- 燒機測試控制面板 -->
+            <div class="card interactive-card">
+                <div class="card-header">
+                    <div class="card-title">硬體與效能壓力燒機測試中心 (Stress Test Center)</div>
+                </div>
+                
+                <!-- 頁籤切換器 -->
+                <div style="display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 12px;">
+                    <button class="btn btn-tab active" id="tab-btn-server" onclick="switchStressTab('server')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                        伺服器端 CPU 燒機
+                    </button>
+                    <button class="btn btn-tab btn-outline" id="tab-btn-client" onclick="switchStressTab('client')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        網頁前端瀏覽器燒機
+                    </button>
+                </div>
+
+                <!-- 伺服器端燒機面板 -->
+                <div id="stress-server-panel" style="display: block;">
+                    <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; margin-bottom: 20px;">
+                        <div>
+                            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.95rem; line-height: 1.5;">
+                                此功能將在伺服器端啟動指定數量的 CPU 密集處理程序 (Multiprocessing)。這將使伺服器的 CPU 使用率飆升，可用來測試主機的極限散熱與高負載穩定性。
+                            </p>
+                            <div class="spec-list" style="margin-bottom: 20px;">
+                                <div class="spec-item">
+                                    <div class="spec-label">邏輯核心總數</div>
+                                    <div class="spec-value" id="server-cpu-cores">偵測中...</div>
+                                </div>
+                                <div class="spec-item">
+                                    <div class="spec-label">伺服器燒機狀態</div>
+                                    <div class="spec-value" id="server-stress-status-text" style="color: var(--text-secondary); font-weight: 600;">已停止</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 12px; justify-content: center; background: rgba(255,255,255,0.01); border: 1px solid var(--card-border); padding: 18px; border-radius: 12px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <label style="font-size: 0.9rem; color: var(--text-secondary);">啟用核心數：</label>
+                                <select id="stress-cores-select" style="background: #111827; border: 1px solid var(--card-border); color: white; padding: 6px 12px; border-radius: 6px; font-family: var(--font-inter); outline: none;">
+                                    <option value="1">1 核心</option>
+                                    <option value="2">2 核心</option>
+                                    <option value="4" selected>4 核心</option>
+                                </select>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <label style="font-size: 0.9rem; color: var(--text-secondary);">測試持續時間：</label>
+                                <select id="stress-duration-select" style="background: #111827; border: 1px solid var(--card-border); color: white; padding: 6px 12px; border-radius: 6px; font-family: var(--font-inter); outline: none;">
+                                    <option value="10">10 秒</option>
+                                    <option value="30" selected>30 秒</option>
+                                    <option value="60">60 秒</option>
+                                    <option value="300">5 分鐘</option>
+                                    <option value="0">無限期 (手動結束)</option>
+                                </select>
+                            </div>
+                            <!-- 倒數進度條 -->
+                            <div id="server-stress-progress-container" style="display: none; margin-top: 10px; width: 100%;">
+                                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 4px; color: var(--accent-pink);">
+                                    <span>燒機倒數時間</span>
+                                    <span id="server-stress-time-left">0s</span>
+                                </div>
+                                <div class="progress-bar-bg" style="height: 6px;">
+                                    <div class="progress-bar-fill pink" id="server-stress-progress-bar" style="width: 100%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" id="btn-start-server-stress" onclick="startServerStress()" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2.5 3.19-2.5 5.5h20c0-2.31-1-4.24-2.5-5.5"></path><path d="M12 2C8.5 2 6.5 4.5 6.5 8c0 3.5 3.5 8 5.5 11 2-3 5.5-7.5 5.5-11 0-3.5-2-6-5.5-6z"></path></svg>
+                            開始伺服器燒機
+                        </button>
+                        <button class="btn btn-outline" id="btn-stop-server-stress" onclick="stopServerStress()" disabled style="opacity: 0.5;">
+                            停止燒機
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 網頁前端燒機面板 -->
+                <div id="stress-client-panel" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; margin-bottom: 20px;">
+                        <div>
+                            <p style="color: var(--text-secondary); margin-bottom: 16px; font-size: 0.95rem; line-height: 1.5;">
+                                此功能將直接在您的瀏覽器中建立 Web Workers 執行背景質數運算，藉此測試您本地電腦的 CPU。您可以觀察本地 FPS 變化來判斷系統卡頓程度。
+                            </p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); padding: 12px; border-radius: 10px; text-align: center;">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">瀏覽器 FPS</div>
+                                    <div style="font-size: 1.8rem; font-weight: 700; font-family: var(--font-mono); color: var(--accent-cyan);" id="client-fps-val">60</div>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--card-border); padding: 12px; border-radius: 10px; text-align: center;">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">總運算量 (ops/s)</div>
+                                    <div style="font-size: 1.8rem; font-weight: 700; font-family: var(--font-mono); color: var(--accent-green);" id="client-ops-val">0</div>
+                                </div>
+                            </div>
+                            <div class="spec-list">
+                                <div class="spec-item">
+                                    <div class="spec-label">本地瀏覽器執行緒</div>
+                                    <div class="spec-value" id="client-hardware-concurrency">偵測中...</div>
+                                </div>
+                                <div class="spec-item">
+                                    <div class="spec-label">執行中 Worker 數</div>
+                                    <div class="spec-value" id="client-workers-count">0</div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Canvas 負載視覺化與執行緒設定 -->
+                        <div style="display: flex; flex-direction: column; gap: 12px; justify-content: center; background: rgba(255,255,255,0.01); border: 1px solid var(--card-border); padding: 18px; border-radius: 12px; align-items: center;">
+                            <!-- 旋轉粒子模擬 -->
+                            <div style="position: relative; width: 100px; height: 100px; margin-bottom: 8px;">
+                                <canvas id="stress-canvas" width="100" height="100" style="width: 100px; height: 100px; border-radius: 50%; background: #0b0f19; border: 1px solid var(--card-border);"></canvas>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.8rem; color: var(--text-secondary); font-family: var(--font-mono); pointer-events: none; font-weight: 600;" id="canvas-rpm">Idle</div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <label style="font-size: 0.9rem; color: var(--text-secondary);">Worker 執行緒數量：</label>
+                                <select id="client-threads-select" style="background: #111827; border: 1px solid var(--card-border); color: white; padding: 4px 8px; border-radius: 6px; font-family: var(--font-inter); outline: none;">
+                                    <option value="1">1 個</option>
+                                    <option value="2">2 個</option>
+                                    <option value="4" selected>4 個</option>
+                                    <option value="8">8 個</option>
+                                    <option value="max">最大值</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn" id="btn-start-client-stress" onclick="startClientStress()" style="background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-pink) 100%); box-shadow: 0 4px 15px rgba(244, 114, 182, 0.3);">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            開始網頁端燒機
+                        </button>
+                        <button class="btn btn-outline" id="btn-stop-client-stress" onclick="stopClientStress()" disabled style="opacity: 0.5;">
+                            停止燒機
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
 
@@ -663,11 +810,359 @@
             }
         }
 
+        // ==========================================
+        // 燒機測試控制中心 JavaScript 邏輯
+        // ==========================================
+        
+        let serverStressInterval = null;
+        
+        function switchStressTab(tab) {
+            const tabServer = document.getElementById('tab-btn-server');
+            const tabClient = document.getElementById('tab-btn-client');
+            const panelServer = document.getElementById('stress-server-panel');
+            const panelClient = document.getElementById('stress-client-panel');
+            
+            if (tab === 'server') {
+                tabServer.classList.add('active');
+                tabServer.classList.remove('btn-outline');
+                tabClient.classList.remove('active');
+                tabClient.classList.add('btn-outline');
+                panelServer.style.display = 'block';
+                panelClient.style.display = 'none';
+            } else {
+                tabClient.classList.add('active');
+                tabClient.classList.remove('btn-outline');
+                tabServer.classList.remove('active');
+                tabServer.classList.add('btn-outline');
+                panelServer.style.display = 'none';
+                panelClient.style.display = 'block';
+                startCanvasAnimation();
+            }
+        }
+
+        async function checkServerStressStatus() {
+            try {
+                const res = await fetch('/api/stress/status');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    const status = data.stress_status;
+                    
+                    // 動態設定核心數選單
+                    const maxCores = status.max_system_cores;
+                    document.getElementById('server-cpu-cores').textContent = `${maxCores} 核心`;
+                    
+                    const selectCores = document.getElementById('stress-cores-select');
+                    if (selectCores.options.length <= 3 && maxCores > 4) {
+                        selectCores.innerHTML = '';
+                        for (let i = 1; i <= maxCores; i *= 2) {
+                            const opt = document.createElement('option');
+                            opt.value = i;
+                            opt.textContent = `${i} 核心`;
+                            if (i === 4 || (i < 4 && i === maxCores)) opt.selected = true;
+                            selectCores.appendChild(opt);
+                        }
+                        if (maxCores > 1 && !Array.from(selectCores.options).some(o => o.value == maxCores)) {
+                            const opt = document.createElement('option');
+                            opt.value = maxCores;
+                            opt.textContent = `${maxCores} 核心 (最大值)`;
+                            selectCores.appendChild(opt);
+                        }
+                    }
+
+                    updateServerStressUI(status);
+                }
+            } catch (e) {
+                console.error("Error fetching stress status", e);
+            }
+        }
+        
+        function updateServerStressUI(status) {
+            const btnStart = document.getElementById('btn-start-server-stress');
+            const btnStop = document.getElementById('btn-stop-server-stress');
+            const statusText = document.getElementById('server-stress-status-text');
+            const progressContainer = document.getElementById('server-stress-progress-container');
+            const progressBar = document.getElementById('server-stress-progress-bar');
+            const timeLeftText = document.getElementById('server-stress-time-left');
+            
+            if (status.active) {
+                btnStart.disabled = true;
+                btnStart.style.opacity = 0.5;
+                btnStop.disabled = false;
+                btnStop.style.opacity = 1;
+                
+                statusText.textContent = `燃燒中 (正在耗盡 ${status.cores} 核心...)`;
+                statusText.style.color = '#f87171';
+                
+                if (status.duration > 0) {
+                    progressContainer.style.display = 'block';
+                    const percent = (status.remaining / status.duration) * 100;
+                    progressBar.style.width = `${percent}%`;
+                    timeLeftText.textContent = `${status.remaining} 秒`;
+                } else {
+                    progressContainer.style.display = 'block';
+                    progressBar.style.width = `100%`;
+                    timeLeftText.textContent = `無限期`;
+                }
+                
+                if (!serverStressInterval) {
+                    serverStressInterval = setInterval(checkServerStressStatus, 1000);
+                }
+            } else {
+                btnStart.disabled = false;
+                btnStart.style.opacity = 1;
+                btnStop.disabled = true;
+                btnStop.style.opacity = 0.5;
+                
+                statusText.textContent = `已停止`;
+                statusText.style.color = 'var(--text-secondary)';
+                progressContainer.style.display = 'none';
+                
+                if (serverStressInterval) {
+                    clearInterval(serverStressInterval);
+                    serverStressInterval = null;
+                }
+            }
+        }
+
+        async function startServerStress() {
+            const cores = document.getElementById('stress-cores-select').value;
+            const duration = document.getElementById('stress-duration-select').value;
+            
+            appendTerminal(`[伺服器燒機] 正在發送 POST 請求啟動壓力測試 (Cores: ${cores}, Duration: ${duration}s)...`);
+            
+            try {
+                const res = await fetch('/api/stress/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ cores: parseInt(cores), duration: parseInt(duration) })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    appendTerminal(`[伺服器燒機] 成功啟動！多處理程序正在背景執行 CPU 密集運算。`, 'success');
+                    updateServerStressUI(data.stress_status);
+                    
+                    // 立即觸發遙測更新以看見 CPU 飆高
+                    setTimeout(fetchTelemetry, 1000);
+                } else {
+                    appendTerminal(`[伺服器燒機] 啟動失敗: ${data.message}`, 'error');
+                }
+            } catch (e) {
+                appendTerminal(`[伺服器燒機] 發生網路錯誤: ${e.message}`, 'error');
+            }
+        }
+
+        async function stopServerStress() {
+            appendTerminal(`[伺服器燒機] 正在發送停止壓力測試請求...`);
+            
+            try {
+                const res = await fetch('/api/stress/stop', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    appendTerminal(`[伺服器燒機] 已發送停止指令，背景多處理程序已全部終止。`, 'success');
+                    updateServerStressUI(data.stress_status);
+                    
+                    // 立即更新遙測
+                    setTimeout(fetchTelemetry, 1000);
+                }
+            } catch (e) {
+                appendTerminal(`[伺服器燒機] 停止請求失敗: ${e.message}`, 'error');
+            }
+        }
+
+        // 瀏覽器端 Web Workers 燒機邏輯
+        let clientWorkers = [];
+        let clientOpsTotal = 0;
+        let clientOpsInterval = null;
+        let fpsInterval = null;
+        let lastFpsTime = performance.now();
+        let frameCount = 0;
+        let currentFps = 60;
+        
+        function startFpsCounter() {
+            frameCount = 0;
+            lastFpsTime = performance.now();
+            
+            function loop() {
+                if (clientWorkers.length === 0) {
+                    currentFps = 60;
+                    document.getElementById('client-fps-val').textContent = '60';
+                    return;
+                }
+                
+                frameCount++;
+                const now = performance.now();
+                const delta = now - lastFpsTime;
+                
+                if (delta >= 1000) {
+                    currentFps = Math.round((frameCount * 1000) / delta);
+                    document.getElementById('client-fps-val').textContent = currentFps;
+                    frameCount = 0;
+                    lastFpsTime = now;
+                }
+                requestAnimationFrame(loop);
+            }
+            requestAnimationFrame(loop);
+        }
+
+        function startClientStress() {
+            const selectThreads = document.getElementById('client-threads-select');
+            let count = selectThreads.value;
+            if (count === 'max') {
+                count = navigator.hardwareConcurrency || 4;
+            } else {
+                count = parseInt(count);
+            }
+            
+            stopClientStress();
+            
+            appendTerminal(`[瀏覽器燒機] 正在本地建立 ${count} 個 Web Workers 背景執行緒執行密集數學計算...`);
+            
+            document.getElementById('client-workers-count').textContent = count;
+            document.getElementById('btn-start-client-stress').disabled = true;
+            document.getElementById('btn-start-client-stress').style.opacity = 0.5;
+            document.getElementById('btn-stop-client-stress').disabled = false;
+            document.getElementById('btn-stop-client-stress').style.opacity = 1;
+            
+            clientOpsTotal = 0;
+            clientOpsInterval = setInterval(() => {
+                document.getElementById('client-ops-val').textContent = clientOpsTotal.toLocaleString();
+                clientOpsTotal = 0;
+            }, 1000);
+            
+            // 使用 Blob 建立 inline Web Worker 以免去讀取外部 JS 檔案的麻煩
+            const workerCode = `
+                self.onmessage = function(e) {
+                    while (true) {
+                        // 執行質數尋找，消耗 CPU 核心效能
+                        let limit = 20000;
+                        for (let i = 2; i < limit; i++) {
+                            let isPrime = true;
+                            for (let j = 2; j <= Math.sqrt(i); j++) {
+                                if (i % j === 0) { isPrime = false; break; }
+                            }
+                        }
+                        self.postMessage(1);
+                    }
+                };
+            `;
+            
+            const blob = new Blob([workerCode], { type: 'text/javascript' });
+            const blobUrl = URL.createObjectURL(blob);
+            
+            for (let i = 0; i < count; i++) {
+                try {
+                    const worker = new Worker(blobUrl);
+                    worker.onmessage = function(e) {
+                        clientOpsTotal += 1000; // 每個區塊運算等同 1000 次運算指標
+                    };
+                    worker.postMessage('start');
+                    clientWorkers.push(worker);
+                } catch (e) {
+                    console.error("Failed to spawn worker", e);
+                }
+            }
+            
+            startFpsCounter();
+            appendTerminal(`[瀏覽器燒機] 瀏覽器壓力測試執行中。您的網頁可能會感到遲鈍，此為正常現象！`, 'success');
+        }
+
+        function stopClientStress() {
+            if (clientWorkers.length === 0) return;
+            
+            appendTerminal(`[瀏覽器燒機] 正在釋放所有 Web Workers 資源...`);
+            
+            clientWorkers.forEach(w => w.terminate());
+            clientWorkers = [];
+            
+            if (clientOpsInterval) {
+                clearInterval(clientOpsInterval);
+                clientOpsInterval = null;
+            }
+            
+            document.getElementById('client-workers-count').textContent = '0';
+            document.getElementById('client-ops-val').textContent = '0';
+            document.getElementById('client-fps-val').textContent = '60';
+            currentFps = 60;
+            
+            document.getElementById('btn-start-client-stress').disabled = false;
+            document.getElementById('btn-start-client-stress').style.opacity = 1;
+            document.getElementById('btn-stop-client-stress').disabled = true;
+            document.getElementById('btn-stop-client-stress').style.opacity = 0.5;
+            
+            appendTerminal(`[瀏覽器燒機] 本地壓力測試已關閉，CPU 已恢復閒置。`, 'info');
+        }
+
+        // Canvas 視覺化繪製邏輯
+        const canvas = document.getElementById('stress-canvas');
+        const ctx = canvas.getContext('2d');
+        let canvasAngle = 0;
+        let canvasAnimationId = null;
+        
+        function drawStressCanvas() {
+            const width = canvas.width;
+            const height = canvas.height;
+            ctx.clearRect(0, 0, width, height);
+            
+            const cx = width / 2;
+            const cy = height / 2;
+            const radius = 35;
+            
+            // 轉速與瀏覽器 FPS 正相關
+            const speed = (currentFps / 60) * 0.08;
+            canvasAngle += speed;
+            
+            ctx.beginPath();
+            ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            const particleCount = 8;
+            for (let i = 0; i < particleCount; i++) {
+                const angle = canvasAngle + (i * Math.PI * 2 / particleCount);
+                const px = cx + Math.cos(angle) * radius;
+                const py = cy + Math.sin(angle) * radius;
+                
+                ctx.beginPath();
+                ctx.arc(px, py, 4, 0, Math.PI * 2);
+                
+                if (clientWorkers.length > 0) {
+                    // 若有燒機，顏色根據 FPS 從紫色變為紅色
+                    const hue = Math.max(0, 280 - (60 - currentFps) * 4);
+                    ctx.fillStyle = `hsl(${hue}, 80%, 60%)`;
+                } else {
+                    ctx.fillStyle = 'var(--accent-purple)';
+                }
+                ctx.fill();
+            }
+            
+            const stressLabel = clientWorkers.length > 0 ? `${currentFps} FPS` : 'Idle';
+            document.getElementById('canvas-rpm').textContent = stressLabel;
+            document.getElementById('canvas-rpm').style.color = clientWorkers.length > 0 ? (currentFps < 30 ? '#ef4444' : 'var(--accent-pink)') : 'var(--text-secondary)';
+            
+            canvasAnimationId = requestAnimationFrame(drawStressCanvas);
+        }
+        
+        function startCanvasAnimation() {
+            if (!canvasAnimationId) {
+                drawStressCanvas();
+            }
+        }
+
         // 頁面加載完成後自動載入一次
         window.addEventListener('DOMContentLoaded', () => {
             fetchTelemetry();
-            // 每過 5 秒自動重新整理一次遙測數據，讓儀表板「動起來」
+            // 每過 5 秒自動重新整理一次遙測數據
             setInterval(fetchTelemetry, 5000);
+            
+            // 獲取伺服器 CPU 規格與燒機狀態
+            checkServerStressStatus();
+            
+            // 設定本地執行緒規格
+            document.getElementById('client-hardware-concurrency').textContent = `${navigator.hardwareConcurrency || '無法偵測'} 核心`;
+            
+            // 啟動 Canvas 動畫
+            startCanvasAnimation();
         });
     </script>
 </body>
